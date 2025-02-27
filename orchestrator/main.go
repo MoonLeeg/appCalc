@@ -23,7 +23,7 @@ var timeDivision int
 
 type ExpressionJob struct {
 	ID         int      `json:"id"`
-	Expression string   `json:"expression"` // можно использовать для отладки
+	Expression string   `json:"expression"`
 	Status     string   `json:"status"`
 	Result     *float64 `json:"result"`
 	AST        *Node    `json:"-"`
@@ -448,7 +448,6 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 func main() {
 	initOperationTimes()
 
-	// Оборачиваем обработчики в enableCORS
 	http.HandleFunc("/api/v1/calculate", enableCORS(calculateHandler))
 	http.HandleFunc("/api/v1/expressions", enableCORS(expressionsRouter))
 	http.HandleFunc("/api/v1/expressions/", enableCORS(expressionsRouter))
