@@ -2,162 +2,169 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Калькулятор</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f9f9f9;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 20px;
-      border: 1px solid #ddd;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h1 {
-      text-align: center;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      box-sizing: border-box;
-      border: 1px solid #bbb;
-      border-radius: 4px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      background: #4285f4;
-      color: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #3079ed;
-    }
-    .result, .error {
-      margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #bbb;
-      border-radius: 4px;
-    }
-    .result {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-    .error {
-      background: #ffebee;
-      color: #c62828;
-    }
-    .steps {
-      margin-top: 10px;
-      padding: 10px;
-      background: #f5f5f5;
-      border-radius: 4px;
-    }
-    .final-result {
-      font-size: 1.2em;
-      color: #2e7d32;
-      margin: 10px 0;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Distributed Calculator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-  <div class="container">
-    <h1>Калькулятор</h1>
-    <form id="calcForm">
-      <label for="expression">Введите выражение:</label>
-      <input type="text" id="expression" name="expression" placeholder="например, 2 + 2 * 2" required>
-      <button type="submit">Вычислить</button>
-    </form>
-    <div id="result" class="result" style="display: none;"></div>
-    <div id="error" class="error" style="display: none;"></div>
+<body class="bg-light">
+  <div class="container mt-5">
+    <h1 class="text-center mb-4">Distributed Calculator</h1>
+
+    <div id="authSection">
+      <ul class="nav nav-tabs" id="authTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Вход</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Регистрация</button>
+        </li>
+      </ul>
+      <div class="tab-content border border-top-0 p-4 bg-white" id="authTabContent">
+        <div class="tab-pane fade show active" id="login" role="tabpanel">
+          <form id="loginForm">
+            <div class="mb-3">
+              <label for="loginLogin" class="form-label">Логин</label>
+              <input type="text" class="form-control" id="loginLogin" required>
+            </div>
+            <div class="mb-3">
+              <label for="loginPassword" class="form-label">Пароль</label>
+              <input type="password" class="form-control" id="loginPassword" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Войти</button>
+          </form>
+        </div>
+        <div class="tab-pane fade" id="register" role="tabpanel">
+          <form id="registerForm">
+            <div class="mb-3">
+              <label for="regLogin" class="form-label">Логин</label>
+              <input type="text" class="form-control" id="regLogin" required>
+            </div>
+            <div class="mb-3">
+              <label for="regPassword" class="form-label">Пароль</label>
+              <input type="password" class="form-control" id="regPassword" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-success">Зарегистрироваться</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="calcSection" class="mt-4" style="display: none;">
+      <div class="card">
+        <div class="card-body">
+          <form id="calcForm" class="row g-2">
+            <div class="col-9">
+              <input type="text" id="expression" class="form-control" placeholder="Например, (2+3)*4" required>
+            </div>
+            <div class="col-3">
+              <button type="submit" class="btn btn-primary w-100">Вычислить</button>
+            </div>
+          </form>
+          <div id="error" class="alert alert-danger mt-3 d-none"></div>
+          <div id="result" class="alert alert-success mt-3 d-none"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    document.getElementById('calcForm').addEventListener('submit', function(e) {
+    const apiBase = 'http://localhost:8080/api/v1';
+    let token = '';
+
+    function showSection(authenticated) {
+      document.getElementById('authSection').style.display = authenticated ? 'none' : '';
+      document.getElementById('calcSection').style.display = authenticated ? '' : 'none';
+    }
+
+    async function login(e) {
       e.preventDefault();
+      clearAlerts();
+      const login = document.getElementById('loginLogin').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      try {
+        const res = await fetch(`${apiBase}/login`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({login, password})
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        token = data.token;
+        showSection(true);
+      } catch(err) {
+        alertError(err.message);
+      }
+    }
+
+    async function registerFn(e) {
+      e.preventDefault();
+      clearAlerts();
+      const login = document.getElementById('regLogin').value.trim();
+      const password = document.getElementById('regPassword').value;
+      try {
+        const res = await fetch(`${apiBase}/register`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({login, password})
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert('Регистрация прошла успешно, теперь войдите.');
+        new bootstrap.Tab(document.querySelector('#login-tab')).show();
+      } catch(err) {
+        alertError(err.message);
+      }
+    }
+
+    function clearAlerts() {
+      document.getElementById('error').classList.add('d-none');
+      document.getElementById('result').classList.add('d-none');
+    }
+
+    function alertError(msg) {
+      const err = document.getElementById('error');
+      err.textContent = msg;
+      err.classList.remove('d-none');
+    }
+
+    async function calculate(e) {
+      e.preventDefault();
+      clearAlerts();
       const expr = document.getElementById('expression').value.trim();
-      if (!expr) return;
-      
-      const resultDiv = document.getElementById('result');
-      const errorDiv = document.getElementById('error');
-      resultDiv.style.display = 'none';
-      errorDiv.style.display = 'none';
-      
-      let taskId;
-      
-      fetch('http://localhost:8080/api/v1/calculate', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ expression: expr })
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.text().then(text => { throw new Error(text) });
+      try {
+        const res = await fetch(`${apiBase}/calculate`, {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+          body: JSON.stringify({expression: expr})
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const {id} = await res.json();
+        pollResult(id);
+      } catch(err) {
+        alertError(err.message);
+      }
+    }
+
+    async function pollResult(taskId) {
+      const resultEl = document.getElementById('result');
+      while(true) {
+        const res = await fetch(`${apiBase}/expressions/${taskId}`, {headers: {'Authorization': `Bearer ${token}`}});
+        const data = await res.json();
+        if (data.status === 'done') {
+          resultEl.innerHTML = `<strong>Ответ:</strong> ${data.result?.Float64 ?? 'Н/Д'}`;
+          resultEl.classList.remove('d-none');
+          break;
         }
-        return response.json();
-      })
-      .then(data => {
-        if (!data.id || !data.expression) {
-          throw new Error('Некорректный ответ от сервера');
+        if (data.status === 'error') {
+          alertError(`Ошибка вычисления выражения ID ${taskId}: ${data.error || 'Неизвестная ошибка'}`);
+          break;
         }
-        
-        taskId = data.id;
-        resultDiv.innerHTML = `<strong>Задача создана:</strong><br>
-          ID: ${data.id}<br>
-          Выражение: ${data.expression}<br>
-          Статус: ${data.status}<br>
-          <div id="computation"></div>`;
-        resultDiv.style.display = 'block';
-        
-        const computationDiv = document.getElementById('computation');
-        
-        const pollInterval = setInterval(() => {
-          fetch(`http://localhost:8080/api/v1/expressions/${taskId}`)
-            .then(response => response.json())
-            .then(jobData => {
-              if (jobData.status === 'done' && jobData.result !== undefined) {
-                clearInterval(pollInterval);
-                resultDiv.innerHTML = `
-                  <strong>Результат вычисления:</strong><br>
-                  Выражение: ${jobData.expression}<br>
-                  <div class="final-result">Ответ: ${jobData.result}</div>
-                  ${jobData.steps ? 
-                    `<div class="steps">
-                      <strong>Шаги вычисления:</strong><br>
-                      ${jobData.steps.join('<br>')}
-                    </div>` : 
-                    ''}
-                `;
-              } else if (jobData.steps && jobData.steps.length > 0) {
-                computationDiv.innerHTML = `
-                  <div class="steps">
-                    <strong>Промежуточные вычисления:</strong><br>
-                    ${jobData.steps.join('<br>')}
-                  </div>
-                `;
-              }
-            })
-            .catch(err => {
-              clearInterval(pollInterval);
-              errorDiv.textContent = 'Ошибка при получении результата: ' + err.message;
-              errorDiv.style.display = 'block';
-            });
-        }, 500);
-      })
-      .catch(err => {
-        errorDiv.textContent = 'Ошибка: ' + err.message;
-        errorDiv.style.display = 'block';
-      });
-    });
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', login);
+    document.getElementById('registerForm').addEventListener('submit', registerFn);
+    document.getElementById('calcForm').addEventListener('submit', calculate);
+    showSection(false);
   </script>
 </body>
 </html> 

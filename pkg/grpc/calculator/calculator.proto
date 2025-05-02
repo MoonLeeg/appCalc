@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "calculator/internal/grpc/calculator";
+
+service CalculatorAgentService {
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc SubmitResult(SubmitResultRequest) returns (SubmitResultResponse);
+}
+
+message GetTaskRequest {
+  string agent_id = 1; 
+}
+
+message GetTaskResponse {
+  oneof task_info {
+    Task task = 1;
+    NoTaskAvailable no_task = 2;
+  }
+}
+
+message Task {
+  int64 id = 1;
+  double arg1 = 2;
+  double arg2 = 3;
+  string operation = 4;
+  int32 operation_time_ms = 5;
+}
+
+message NoTaskAvailable {
+  int32 retry_after_seconds = 1;
+}
+
+message SubmitResultRequest {
+  int64 task_id = 1;
+  oneof result_status {
+    double result = 2;
+    TaskError error = 3;
+  }
+  string agent_id = 4;
+}
+
+message TaskError {
+  string message = 1;
+}
+
+message SubmitResultResponse {
+  bool acknowledged = 1;
+} 

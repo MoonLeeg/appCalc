@@ -1,10 +1,10 @@
-# Исключаем бинарники и временные файлы
 *.exe
 *.log
+*.out
+*.db
+*.db-journal
 
-# Если используете Node.js:
 node_modules/
 
-# Если используете Go:
 bin/
-*.out 
+vendor/
