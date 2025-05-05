@@ -22,7 +22,7 @@
 
 1. Клонируем репозиторий:
    ```bash
-   git clone https://github.com/<ваш_логин>/appCalc.git
+   git clone https://github.com/MoonLeeg/appCalc.git
    cd appCalc
    ```
 
