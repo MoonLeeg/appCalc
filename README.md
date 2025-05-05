@@ -1,128 +1,168 @@
-# Calculator Service
+# Распределённый калькулятор
 
-Проект реализует систему для асинхронного вычисления математических выражений с авторизацией через JWT и хранением данных в SQLite. Состав проекта:
+> Сервис для асинхронного вычисления математических выражений в распределённой среде с поддержкой многопользовательского режима и персистентностью.
+
+## 📁 Структура проекта
 
 - `cmd/orchestrator` — HTTP и gRPC сервис (Оркестратор)
 - `cmd/agent` — gRPC клиент (Агент), выполняющий вычислительные задачи
-- `internal/database` — работа с SQLite (модели, миграции)
-- `internal/orchestrator` — логика HTTP-гайндлеров, парсера, планировщика задач и gRPC сервера
-- `internal/agent` — gRPC-воркер, выполняющий задачи
-- `pkg/grpc/calculator` — protobuf определение и сгенерированный код
+- `internal/database` — работа с SQLite (модели, миграции, CRUD)
+- `internal/orchestrator` — логика HTTP-обработчиков, парсер выражений, планировщик задач, gRPC сервер
+- `internal/agent` — gRPC-воркер, выполняющий вычисления
+- `pkg/grpc/calculator` — protobuf-описание и сгенерированный код
 
-## Требования
+## ⚙️ Требования
 
-- Go 1.24+
+- Go 1.24 или выше
 - SQLite3
-- protoc (если нужно перекомпилировать `.proto`)
+- protoc + protoc-gen-go (при необходимости перекомпиляции `.proto`)
+- (опционально) `jq` для удобного форматирования JSON в примерах
 
-## Установка и запуск
+## 🚀 Быстрый старт
 
-1. Клонировать репозиторий:
+1. Клонируем репозиторий:
    ```bash
-   git clone https://github.com/yourusername/calculator.git
-   cd calculator
+   git clone https://github.com/<ваш_логин>/appCalc.git
+   cd appCalc
    ```
 
-2. Установить зависимости:
+2. Устанавливаем зависимости:
    ```bash
    go mod tidy
    ```
 
-3. Запустить Оркестратор:
+3. Настраиваем переменные окружения:
+   ```bash
+   export JWT_SECRET="your_jwt_secret_here"
+   export COMPUTING_POWER=4      # (опционально) число воркеров у агента, по умолчанию 1
+   ```
+
+4. Запускаем Оркестратор:
    ```bash
    go run ./cmd/orchestrator
    ```
 
-4. Запустить одного или нескольких Агентов:
+5. В новом терминале запускаем Агентов (можно несколько экземпляров):
    ```bash
    go run ./cmd/agent
-   # для увеличения числа воркеров:
-   COMPUTING_POWER=4 go run ./cmd/agent
    ```
 
-## API HTTP (Оркестратор)
+6. Открываем приложение в браузере по адресу:
+   ```
+   http://localhost:8080
+   ```
 
-### Регистрация пользователя
+> Убедитесь, что статика (`index.html`) лежит в `web/static/index.html` или в корне, как указано в коде.
+
+## 📡 API HTTP (Оркестратор)
+
+Базовый URL: `http://localhost:8080/api/v1`
+
+### 1. Регистрация пользователя
+
+- **POST** `/register`
+  ```bash
+  curl -s -X POST http://localhost:8080/api/v1/register \
+    -H "Content-Type: application/json" \
+    -d '{"login":"user1","password":"pass123"}'
+  ```
+
+- **Коды ответа**:
+  - `201 Created` — успешно
+  - `400 Bad Request` — неверный формат или пустые поля
+  - `409 Conflict` — логин уже занят
+
+### 2. Вход (JWT)
+
+- **POST** `/login`
+  ```bash
+  curl -s -X POST http://localhost:8080/api/v1/login \
+    -H "Content-Type: application/json" \
+    -d '{"login":"user1","password":"pass123"}'
+  ```
+
+- **Коды ответа**:
+  - `200 OK` и JSON:
+    ```json
+    { "token": "<JWT_TOKEN>" }
+    ```
+  - `400 Bad Request` — неверный формат
+  - `401 Unauthorized` — неверные логин/пароль
+
+### 3. Отправка выражения на вычисление
+
+- **POST** `/calculate`
+  ```bash
+  curl -s -X POST http://localhost:8080/api/v1/calculate \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <JWT_TOKEN>" \
+    -d '{"expression":"(2+3)*4"}'
+  ```
+
+- **Коды ответа**:
+  - `201 Created` и JSON:
+    ```json
+    {
+      "id": 1,
+      "expression": "(2+3)*4",
+      "status": "pending"
+    }
+    ```
+  - `400 Bad Request` — пустое или некорректное выражение
+  - `401 Unauthorized` — отсутствует или неверный токен
+
+### 4. Получение статуса и результата
+
+- **GET** `/expressions` — список всех ваших выражений
+- **GET** `/expressions/<id>` — конкретное выражение по ID
 
 ```bash
-curl -i -X POST http://localhost:8080/api/v1/register \
-  -H 'Content-Type: application/json' \
-  -d '{"login":"user1","password":"pass123"}'
+curl -s -X GET http://localhost:8080/api/v1/expressions/<id> \
+  -H "Authorization: Bearer <JWT_TOKEN>"
 ```
 
-- Успех: `201 Created`
-- Если логин уже существует: `409 Conflict`
-
-### Вход (JWT)
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/login \
-  -H 'Content-Type: application/json' \
-  -d '{"login":"user1","password":"pass123"}'
-```
-
-- Успех: `200 OK` и JSON `{ "token": "..." }`
-- Ошибка авторизации: `401 Unauthorized`
-
-### Вычисление выражения
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/calculate \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <JWT>' \
-  -d '{"expression":"2+2*2"}'
-```
-
-- Успех: `201 Created`, возвращает `id` задачи и первоначальный статус
-
-### Получение статуса/результата
-
-```bash
-curl -i -X GET http://localhost:8080/api/v1/expressions/<id> \
-  -H 'Authorization: Bearer <JWT>'
-```
-
-- Успех: `200 OK`, возвращает JSON с полями `status`, `result`, `steps`
-
-## Примеры использования
-
-1. Регистрация и вход:
-
-    ```bash
-    curl -s -X POST http://localhost:8080/api/v1/register \
-      -H 'Content-Type: application/json' \
-      -d '{"login":"demo","password":"secret"}'
-
-    curl -s -X POST http://localhost:8080/api/v1/login \
-      -H 'Content-Type: application/json' \
-      -d '{"login":"demo","password":"secret"}' \
-      | jq -r '.token'
+- **Коды ответа**:
+  - `200 OK` и JSON-объект/массив:
+    ```json
+    [
+      {
+        "id": 1,
+        "user_id": 1,
+        "expression": "(2+3)*4",
+        "status": "done",
+        "result": 20,
+        "steps": ["Result: 5","Result: 20"],
+        "created_at": "...",
+        "updated_at": "..."
+      }
+    ]
     ```
 
-2. Вычисление:
+## 🧪 Тестирование
 
-    ```bash
-    TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/login \
-      -H 'Content-Type: application/json' \
-      -d '{"login":"demo","password":"secret"}' \
-      | jq -r '.token')
+- Запуск всех тестов:
+  ```bash
+  go test ./...
+  ```
 
-    curl -s -X POST http://localhost:8080/api/v1/calculate \
-      -H 'Content-Type: application/json' \
-      -H "Authorization: Bearer $TOKEN" \
-      -d '{"expression":"(2+3)*4"}' \
-      | jq
+- Юнит-тесты:
+  ```bash
+  go test ./internal/orchestrator/parser.go
+  go test ./internal/agent/worker.go
+  go test ./internal/database
+  ```
 
-    curl -s -X GET http://localhost:8080/api/v1/expressions/1 \
-      -H "Authorization: Bearer $TOKEN" \
-      | jq
-    ```
+- Интеграционные тесты:
+  ```bash
+  go test ./internal/orchestrator
+  go test ./internal/orchestrator/grpc_server_test.go
+  ```
 
-## Тесты
+## 🔧 Генерация protobuf
 
-- Unit-тесты: `go test ./internal/orchestrator` (парсер, handlers)
-- Интеграционные тесты: `go test ./internal/orchestrator` (API)
+Если нужно обновить код из `.proto`:
 
 ```bash
-go test ./...
+protoc --go_out=. --go-grpc_out=. pkg/grpc/calculator/calculator.proto
 ```
+---
