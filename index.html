@@ -1,170 +1,257 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" x-data="app()" x-init="init()" @keydown.escape="clearAlerts" :class="{ 'dark': darkMode }">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Distributed Calculator</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Распределённый калькулятор</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Inter', sans-serif; }</style>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.5/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script defer>
+    window.tailwindConfig = {
+      darkMode: 'class'
+    }
+  </script>
 </head>
-<body class="bg-light">
-  <div class="container mt-5">
-    <h1 class="text-center mb-4">Distributed Calculator</h1>
+<body class="bg-gradient-to-r from-purple-600 to-blue-500 dark:from-purple-900 dark:to-blue-900 min-h-screen flex items-center justify-center p-6">
 
-    <div id="authSection">
-      <ul class="nav nav-tabs" id="authTab" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Вход</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Регистрация</button>
-        </li>
-      </ul>
-      <div class="tab-content border border-top-0 p-4 bg-white" id="authTabContent">
-        <div class="tab-pane fade show active" id="login" role="tabpanel">
-          <form id="loginForm">
-            <div class="mb-3">
-              <label for="loginLogin" class="form-label">Логин</label>
-              <input type="text" class="form-control" id="loginLogin" required>
-            </div>
-            <div class="mb-3">
-              <label for="loginPassword" class="form-label">Пароль</label>
-              <input type="password" class="form-control" id="loginPassword" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Войти</button>
-          </form>
-        </div>
-        <div class="tab-pane fade" id="register" role="tabpanel">
-          <form id="registerForm">
-            <div class="mb-3">
-              <label for="regLogin" class="form-label">Логин</label>
-              <input type="text" class="form-control" id="regLogin" required>
-            </div>
-            <div class="mb-3">
-              <label for="regPassword" class="form-label">Пароль</label>
-              <input type="password" class="form-control" id="regPassword" required minlength="6">
-            </div>
-            <button type="submit" class="btn btn-success">Зарегистрироваться</button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div id="calcSection" class="mt-4" style="display: none;">
-      <div class="card">
-        <div class="card-body">
-          <form id="calcForm" class="row g-2">
-            <div class="col-9">
-              <input type="text" id="expression" class="form-control" placeholder="Например, (2+3)*4" required>
-            </div>
-            <div class="col-3">
-              <button type="submit" class="btn btn-primary w-100">Вычислить</button>
-            </div>
-          </form>
-          <div id="error" class="alert alert-danger mt-3 d-none"></div>
-          <div id="result" class="alert alert-success mt-3 d-none"></div>
-        </div>
-      </div>
-    </div>
-
+<div class="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 space-y-8 relative">
+  <div class="absolute top-4 right-4">
+    <button @click="darkMode = !darkMode" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 transition-transform transform hover:scale-110">
+      <svg x-show="!darkMode" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m0 14v2m8.66-9h-2M5.34 12H3m15.364 6.364l-1.414-1.414M6.05 6.05L4.636 4.636m12.728 0l-1.414 1.414M6.05 17.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+      </svg>
+      <svg x-show="darkMode" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-100" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 2a8 8 0 108 8A8 8 0 0010 2zm0 14a6 6 0 110-12 6 6 0 010 12z" clip-rule="evenodd"/>
+      </svg>
+    </button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    const apiBase = 'http://localhost:8080/api/v1';
-    let token = '';
+  <h1 class="text-4xl font-extrabold text-center text-gray-800 dark:text-gray-100">Распределённый калькулятор</h1>
 
-    function showSection(authenticated) {
-      document.getElementById('authSection').style.display = authenticated ? 'none' : '';
-      document.getElementById('calcSection').style.display = authenticated ? '' : 'none';
-    }
+  <!-- Authentication -->
+  <div x-show="!authenticated" class="space-y-6">
+    <div class="flex justify-center space-x-6 border-b-2 border-gray-200">
+      <button
+        :class="loginTab ? 'border-b-4 border-blue-500 text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+        class="py-2 px-4 font-medium"
+        @click="loginTab=true">Вход</button>
+      <button
+        :class="!loginTab ? 'border-b-4 border-blue-500 text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+        class="py-2 px-4 font-medium"
+        @click="loginTab=false">Регистрация</button>
+    </div>
+    <form x-show="loginTab" @submit.prevent="login" class="space-y-4">
+      <input x-model="loginUser" type="text" placeholder="Логин" required
+        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <input x-model="loginPass" type="password" placeholder="Пароль" required minlength="6"
+        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <button type="submit"
+        class="w-full py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition">Войти</button>
+    </form>
+    <form x-show="!loginTab" @submit.prevent="register" class="space-y-4">
+      <input x-model="regUser" type="text" placeholder="Логин" required
+        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <input x-model="regPass" type="password" placeholder="Пароль (min 6 символов)" required minlength="6"
+        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <button type="submit"
+        class="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Зарегистрироваться</button>
+    </form>
+  </div>
 
-    async function login(e) {
-      e.preventDefault();
-      clearAlerts();
-      const login = document.getElementById('loginLogin').value.trim();
-      const password = document.getElementById('loginPassword').value;
+  <!-- Calculator -->
+  <div x-show="authenticated" class="space-y-6">
+    <div class="flex space-x-4">
+      <input x-model="expression" type="text" placeholder="Введите выражение, напр. (2+3)*4"
+        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 placeholder-gray-500 dark:placeholder-gray-400">
+      <button @click="calculate"
+        class="px-6 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition flex items-center justify-center">
+        <template x-if="loading">
+          <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        </template>
+        Вычислить
+      </button>
+    </div>
+    <div x-show="error" class="text-red-500 dark:text-red-400 font-medium">
+      <p x-text="error"></p>
+    </div>
+    <div x-show="result !== ''" class="text-green-600 dark:text-green-400 font-semibold">
+      <p><strong>Ответ:</strong> <span x-text="result"></span></p>
+    </div>
+
+    <!-- History -->
+    <div>
+      <h2 class="text-2xl font-bold mb-4">История вычислений</h2>
+      <table class="min-w-full bg-white dark:bg-gray-800 border">
+        <thead>
+          <tr class="bg-gray-100 dark:bg-gray-700">
+            <th class="py-2 px-4 border">ID</th>
+            <th class="py-2 px-4 border">Выражение</th>
+            <th class="py-2 px-4 border">Статус</th>
+            <th class="py-2 px-4 border">Результат</th>
+            <th class="py-2 px-4 border">Шаги</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="item in history" :key="item.id">
+            <tr class="bg-white dark:bg-gray-900">
+              <td class="py-1 px-4 border text-center text-gray-800 dark:text-gray-100" x-text="item.id"></td>
+              <td class="py-1 px-4 border text-gray-800 dark:text-gray-100" x-text="item.expression"></td>
+              <td class="py-1 px-4 border text-gray-800 dark:text-gray-100" x-text="item.status"></td>
+              <td class="py-1 px-4 border text-gray-800 dark:text-gray-100" x-text="item.result!==null?item.result:'-'" ></td>
+              <td class="py-1 px-4 border">
+                <template x-if="item.stepsArr">
+                  <details class="pl-2">
+                    <summary class="cursor-pointer text-blue-500 dark:text-blue-400">Показать</summary>
+                    <template x-for="step in item.stepsArr" :key="step">
+                      <p class="text-sm text-gray-500 dark:text-gray-300" x-text="step"></p>
+                    </template>
+                  </details>
+                </template>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function app() {
+  return {
+    darkMode: false,
+    loginTab: true,
+    loginUser: '', loginPass: '',
+    regUser: '', regPass: '',
+    expression: '',
+    token: '',
+    authenticated: false,
+    error: '',
+    result: '',
+    history: [],
+    loading: false,
+    apiBase: 'http://localhost:8080/api/v1',
+    init() { this.darkMode = localStorage.getItem('dark') === 'true'; this.$watch('darkMode', value => localStorage.setItem('dark', value)); },
+
+    clearAlerts() {
+      this.error = ''; this.result = '';
+    },
+
+    async login() {
+      this.clearAlerts();
       try {
-        const res = await fetch(`${apiBase}/login`, {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({login, password})
+        let res = await fetch(`${this.apiBase}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: this.loginUser, password: this.loginPass })
         });
         if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        token = data.token;
-        showSection(true);
-      } catch(err) {
-        alertError(err.message);
+        let data = await res.json();
+        this.token = data.token;
+        this.authenticated = true;
+        this.fetchHistory();
+      } catch (e) {
+        this.error = e.message;
       }
-    }
+    },
 
-    async function registerFn(e) {
-      e.preventDefault();
-      clearAlerts();
-      const login = document.getElementById('regLogin').value.trim();
-      const password = document.getElementById('regPassword').value;
+    async register() {
+      this.clearAlerts();
       try {
-        const res = await fetch(`${apiBase}/register`, {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({login, password})
+        let res = await fetch(`${this.apiBase}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: this.regUser, password: this.regPass })
         });
         if (!res.ok) throw new Error(await res.text());
-        alert('Регистрация прошла успешно, теперь войдите.');
-        new bootstrap.Tab(document.querySelector('#login-tab')).show();
-      } catch(err) {
-        alertError(err.message);
+        alert('Регистрация успешна! Войдите.');
+        this.loginTab = true;
+      } catch (e) {
+        this.error = e.message;
       }
-    }
+    },
 
-    function clearAlerts() {
-      document.getElementById('error').classList.add('d-none');
-      document.getElementById('result').classList.add('d-none');
-    }
-
-    function alertError(msg) {
-      const err = document.getElementById('error');
-      err.textContent = msg;
-      err.classList.remove('d-none');
-    }
-
-    async function calculate(e) {
-      e.preventDefault();
-      clearAlerts();
-      const expr = document.getElementById('expression').value.trim();
+    async calculate() {
+      this.clearAlerts();
+      if (!this.expression) { this.error = 'Введите выражение'; return; }
+      this.loading = true;
       try {
-        const res = await fetch(`${apiBase}/calculate`, {
-          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-          body: JSON.stringify({expression: expr})
+        let res = await fetch(`${this.apiBase}/calculate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+          },
+          body: JSON.stringify({ expression: this.expression })
         });
         if (!res.ok) throw new Error(await res.text());
-        const {id} = await res.json();
-        pollResult(id);
-      } catch(err) {
-        alertError(err.message);
-      }
-    }
+        let { id } = await res.json();
 
-    async function pollResult(taskId) {
-      const resultEl = document.getElementById('result');
-      while(true) {
-        const res = await fetch(`${apiBase}/expressions/${taskId}`, {headers: {'Authorization': `Bearer ${token}`}});
-        const data = await res.json();
-        if (data.status === 'done') {
-          resultEl.innerHTML = `<strong>Ответ:</strong> ${data.result?.Float64 ?? 'Н/Д'}`;
-          resultEl.classList.remove('d-none');
-          break;
+        // poll result
+        while (true) {
+          let r = await fetch(`${this.apiBase}/expressions/${id}`, {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+          });
+          let d = await r.json();
+          if (d.status === 'done') {
+            // корретно получаем число из объекта или прямого значения
+            const raw = d.result;
+            let val = '-';
+            if (raw != null) {
+              val = raw.Float64 !== undefined ? raw.Float64 : raw;
+            }
+            this.result = val;
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            break;
+          }
+          if (d.status === 'error') {
+            this.error = d.error || 'Ошибка вычисления';
+            break;
+          }
+          await new Promise(res => setTimeout(res, 500));
         }
-        if (data.status === 'error') {
-          alertError(`Ошибка вычисления выражения ID ${taskId}: ${data.error || 'Неизвестная ошибка'}`);
-          break;
-        }
-        await new Promise(r => setTimeout(r, 500));
+        this.fetchHistory();
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchHistory() {
+      try {
+        let res = await fetch(`${this.apiBase}/expressions`, {
+          headers: { 'Authorization': `Bearer ${this.token}` }
+        });
+        if (!res.ok) throw new Error(await res.text());
+        let data = await res.json();
+        // Преобразуем результат и шаги
+        this.history = data.map(item => {
+          let result = null;
+          if (item.result && item.result.Valid) result = item.result.Float64;
+          let stepsArr = null;
+          if (item.steps && item.steps.Valid) {
+            try { stepsArr = JSON.parse(item.steps.String); } catch { stepsArr = null; }
+          }
+          return { ...item, result, stepsArr };
+        });
+      } catch (e) {
+        console.error('History fetch error', e);
       }
     }
+  }
+}
+</script>
 
-    document.getElementById('loginForm').addEventListener('submit', login);
-    document.getElementById('registerForm').addEventListener('submit', registerFn);
-    document.getElementById('calcForm').addEventListener('submit', calculate);
-    showSection(false);
-  </script>
 </body>
 </html> 
